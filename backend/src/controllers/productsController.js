@@ -18,7 +18,7 @@ productsController.createProducts = async (req, res) => {
 
 // DELETE
 productsController.deleteProducts = async (req, res) => {
-  const deletedProduct = await productsModel.findByIdAndDelete(req.params.Id);
+  const deletedProduct = await productsModel.findByIdAndDelete(req.params.id);
   if (!deletedProduct) {
     return res.status(404).json({ message: "Producto no encontrado" });
   }
@@ -28,7 +28,7 @@ productsController.deleteProducts = async (req, res) => {
 // UPDATE
 productsController.updateProducts = async (req, res) => {
   // Solicito todos los valores
-  const { name, description, price } = req.body;
+  const { name, description, price, stock } = req.body;
   // Actualizo
   await productsModel.findByIdAndUpdate(
     req.params.id,

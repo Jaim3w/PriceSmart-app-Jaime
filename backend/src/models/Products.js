@@ -1,7 +1,7 @@
 /*
     Campos:
         nombre
-        descripcion
+        description
         precio
         stock
 */
@@ -11,10 +11,10 @@ import { Schema, model } from "mongoose";
 const productsSchema = new Schema(
   {
     name: {
-      type: Number,
+      type: String,
       require: true,
     },
-    desciption: {
+    description: {
       type: String,
     },
     price: {

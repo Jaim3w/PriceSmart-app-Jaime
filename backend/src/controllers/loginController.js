@@ -1,7 +1,7 @@
 /*
 Como vamos a validar si es cliente o empleado,
 entonces importo ambos modelos
- */
+*/
 import CustomersModel from "../models/customers.js";
 import EmployeesModel from "../models/employee.js";
 import bcryptjs from "bcryptjs";
@@ -10,31 +10,24 @@ import { config } from "../config.js";
 
 const loginController = {};
 
-//Declarar dos contantes
-//Una que guarde el maximo de intentos posibles
-// Y otra que guarde el tiempo de bloqueo
-
-const maxAttempts = 3;
-const lockTime = 15 * 60 * 1000; //15 minutos
+// Declarar dos constantes
+const maxAttempts = 3; // máximo de intentos
+const lockTime = 15 * 60 * 1000; // 15 minutos
 
 loginController.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Validamos los 3 posibles niveles
-    // 1. Admin, 2. Empleado, 3. Cliente
-
-    let userFound; //Variable que dice si encontramos un usuario
-    let userType; // Variable que dice que tipo de usuario es
+    let userFound; // Variable que dice si encontramos un usuario
+    let userType;  // Variable que dice qué tipo de usuario es
 
     // 1. Admin
-    // Varifiquemos si quien está ingresando es Admin
     if (
       email === config.emailAdmin.email &&
       password === config.emailAdmin.password
     ) {
       userType = "Admin";
-      userFound = { _id: "Admin" };
+      userFound = { _id: "Admin" }; // simulamos usuario admin
     } else {
       // 2. Empleado
       userFound = await EmployeesModel.findOne({ email });
@@ -47,65 +40,69 @@ loginController.login = async (req, res) => {
       }
     }
 
-    // Si no encontramos un usuario en ningun lado
+    // Si no encontramos un usuario en ningún lado
     if (!userFound) {
-      return res.json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    //Primero, determino si el usuario está bloqueado o no
+    // Verificar si la cuenta está bloqueada (solo clientes/empleados)
     if (userType !== "Admin") {
-      if (userFound.lockTime > Date.now()) {
+      if (userFound.lockTime && userFound.lockTime > Date.now()) {
         const minutosRestantes = Math.ceil(
-          userFound.lockTime - Date.now() / 60000
+          (userFound.lockTime - Date.now()) / 60000
         );
         return res.status(403).json({
-          message: "Cuenta bloqueada, intenta de nuevo en" + minutosRestantes,
+          message: `Cuenta bloqueada, intenta de nuevo en ${minutosRestantes} minutos`,
         });
       }
     }
 
-    // Si no es administrador, validamos la contraseña
+    // Validar contraseña (solo clientes/empleados)
     if (userType !== "Admin") {
       const isMatch = await bcryptjs.compare(password, userFound.password);
       if (!isMatch) {
-        //Si la contraseña es incorrecta
-        //incrementar el numero de intentos fallidos
-        userFound.loginAttempts = userFound.loginAttempts + 1;
+        // Incrementar intentos fallidos
+        userFound.loginAttempts = (userFound.loginAttempts || 0) + 1;
 
-        if (userFound.loginAttempts > maxAttempts) {
+        if (userFound.loginAttempts >= maxAttempts) {
           userFound.lockTime = Date.now() + lockTime;
           await userFound.save();
           return res.status(403).json({ message: "Usuario bloqueado" });
         }
 
         await userFound.save();
-
-        return res.json({ message: "Invalid password" });
+        return res.status(401).json({ message: "Invalid password" });
       }
 
+      // Resetear intentos y lockTime si fue correcto
       userFound.loginAttempts = 0;
       userFound.lockTime = null;
       await userFound.save();
     }
 
-    // Generar token
-    jsonwebtoken.sign(
-      //1- Que voy a guardar
+    // ✅ Generar token y guardarlo en variable
+    const token = jsonwebtoken.sign(
       { id: userFound._id, userType },
-      //2- Clave secreta
       config.JWT.secret,
-      //3- Cuando expira
       { expiresIn: config.JWT.expiresIn }
     );
 
+    // Guardar token en cookie
     res.cookie("authToken", token, {
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000, // 1 día
       path: "/",
       sameSite: "lax",
     });
-    res.json({ message: "login successful" });
+
+    // Responder con éxito
+    return res.json({
+      message: "Login successful",
+      userType,
+    });
   } catch (error) {
-    console.log(error);
+    console.error("Error en login:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 export default loginController;

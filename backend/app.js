@@ -18,16 +18,18 @@ import salesRoutes from "./src/routes/sales.js";
 // Creo una constante que es igual a la libreria que importé
 const app = express();
 
-// Que acepte cookies
+// Para que acepte JSON en los requests
+app.use(express.json());
+
+// Para que acepte cookies
 app.use(cookieParser());
 
 // Definir las rutas de las funciones que tendrá la página web
-app.use("/api/products", validateAuthToken(["admin"]), productsRoutes);
+app.use("/api/products", validateAuthToken(["Admin"]), productsRoutes);
 app.use("/api/customers", customersRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/branches", branchesRoutes);
 app.use("/api/reviews", reviewsRoutes);
-b;
 
 app.use("/api/registerEmployees", registerEmployeesRoutes);
 app.use("/api/login", loginRoutes);
@@ -37,7 +39,6 @@ app.use("/api/registerClients", registerClients);
 app.use("/api/passwordRecovery", passwordRecoveryRoutes);
 
 app.use("/api/blog", blogRoutes);
-
 app.use("/api/sales", salesRoutes);
 
 // Exporto la constante para poder usar express en otros archivos
